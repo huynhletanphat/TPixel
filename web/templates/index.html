@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TPixel</title>
+<style>
+  :root {
+    --bg:      #121212;
+    --panel:   #1E1B2E;
+    --border:  #2D2A45;
+    --purple:  #A29BFE;
+    --purple2: #6C5CE7;
+    --green:   #00B894;
+    --yellow:  #FDCB6E;
+    --red:     #FF7675;
+    --text:    #E0E0E0;
+    --muted:   #888;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'Courier New',monospace;
+    height:100vh;
+    display:grid;
+    grid-template-rows:48px 1fr;
+    grid-template-columns:260px 1fr 260px;
+    overflow:hidden;
+  }
+
+  /* Header */
+  header {
+    grid-column:1/-1;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 20px; gap:12px;
+  }
+  header h1 { color:var(--purple); font-size:1rem; letter-spacing:4px; }
+  .nav-tabs { display:flex; gap:4px; margin-left:24px; }
+  .nav-tab {
+    padding:6px 14px; border-radius:4px; border:none;
+    background:transparent; color:var(--muted);
+    font-family:monospace; font-size:0.75rem; cursor:pointer;
+    transition:all 0.2s;
+  }
+  .nav-tab.active { background:var(--purple2); color:#fff; }
+  .header-right { margin-left:auto; font-size:0.72rem; color:var(--muted); display:flex; gap:16px; }
+  .header-right span { color:var(--green); }
+
+  /* Panels */
+  .panel {
+    background:var(--panel); border-right:1px solid var(--border);
+    overflow-y:auto; padding:16px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .panel:last-child { border-right:none; border-left:1px solid var(--border); }
+  .panel-title {
+    font-size:0.68rem; color:var(--purple);
+    letter-spacing:2px; text-transform:uppercase;
+    border-bottom:1px solid var(--border); padding-bottom:8px;
+  }
+
+  /* Pages */
+  .page { display:none; }
+  .page.active { display:flex; flex-direction:column; }
+
+  /* RAM */
+  .ram-bar { background:var(--border); border-radius:4px; height:5px; }
+  .ram-fill { height:100%; background:var(--purple2); border-radius:4px; transition:width 0.5s; }
+  .ram-label { font-size:0.68rem; color:var(--muted); margin-top:4px; }
+
+  /* Model card (sidebar) */
+  .model-card {
+    background:var(--bg); border:1px solid var(--border);
+    border-radius:6px; padding:10px; cursor:pointer; transition:border-color 0.2s;
+  }
+  .model-card:hover { border-color:var(--purple2); }
+  .model-card.active-model { border-color:var(--green); }
+  .model-card .mc-name { font-size:0.78rem; }
+  .model-card .mc-meta { font-size:0.65rem; color:var(--muted); margin-top:3px; }
+  .badge {
+    display:inline-block; font-size:0.6rem; padding:1px 6px;
+    border-radius:3px; margin-left:6px; vertical-align:middle;
+  }
+  .badge-dl   { background:#1a3a2a; color:var(--green); }
+  .badge-nodl { background:#2a1a1a; color:var(--red); }
+
+  /* Workspace */
+  .workspace {
+    display:flex; flex-direction:column;
+    align-items:center; padding:24px; gap:16px; overflow-y:auto;
+  }
+
+  /* Tabs */
+  .tab-bar { display:flex; gap:8px; align-self:flex-start; }
+  .tab {
+    padding:6px 16px; border-radius:4px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--muted); font-family:monospace; font-size:0.75rem;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .tab.active { background:var(--purple2); color:#fff; border-color:var(--purple2); }
+
+  /* Drop zone */
+  .drop-zone {
+    width:100%; max-width:500px; aspect-ratio:1;
+    border:2px dashed var(--border); border-radius:12px;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:12px;
+    cursor:pointer; transition:all 0.2s; position:relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color:var(--purple); background:#1a1730; }
+  .drop-zone .dz-icon { font-size:2.5rem; }
+  .drop-zone p { color:var(--muted); font-size:0.78rem; }
+  .drop-zone input { display:none; }
+
+  /* Compare */
+  .compare-wrap { width:100%; max-width:500px; position:relative; display:none; }
+  .compare-wrap.visible { display:block; }
+  .compare-wrap img { width:100%; display:block; image-rendering:pixelated; border-radius:8px; }
+  .compare-before { position:absolute; top:0; left:0; overflow:hidden; width:50%; }
+  .compare-before img { width:100vw; max-width:500px; }
+  .slider-line {
+    position:absolute; top:0; bottom:0; width:2px;
+    background:var(--purple); left:50%; cursor:ew-resize; z-index:10;
+  }
+  .slider-line::after {
+    content:'◈'; position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%); color:var(--purple);
+    font-size:1.2rem; background:var(--bg); padding:4px; border-radius:50%;
+  }
+  .cmp-label {
+    position:absolute; bottom:8px; font-size:0.62rem; color:#fff;
+    background:rgba(0,0,0,0.6); padding:2px 8px; border-radius:4px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding:9px 22px; border-radius:6px; border:none;
+    font-family:monospace; font-size:0.78rem; cursor:pointer; transition:all 0.2s;
+  }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn-primary { background:var(--purple2); color:#fff; }
+  .btn-primary:hover:not(:disabled) { background:var(--purple); }
+  .btn-danger  { background:#3a1a1a; color:var(--red); border:1px solid var(--red); }
+  .btn-ghost   { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .btn-ghost:hover { border-color:var(--purple); color:var(--purple); }
+  .btn-sm { padding:5px 12px; font-size:0.7rem; }
+
+  select {
+    background:var(--bg); border:1px solid var(--border); color:var(--text);
+    font-family:monospace; font-size:0.78rem; padding:8px 12px;
+    border-radius:6px; outline:none; cursor:pointer;
+  }
+  textarea {
+    background:var(--bg); border:1px solid var(--border); color:var(--text);
+    font-family:monospace; font-size:0.82rem; padding:10px;
+    border-radius:6px; resize:none; outline:none; width:100%;
+    transition:border-color 0.2s;
+  }
+  textarea:focus { border-color:var(--purple); }
+
+  /* Actions row */
+  .actions { display:flex; gap:10px; align-items:center; }
+
+  /* Gen result */
+  .gen-result { display:none; flex-direction:column; align-items:center; gap:10px; }
+  .gen-result img {
+    image-rendering:pixelated; border-radius:8px;
+    max-width:256px; border:1px solid var(--border);
+  }
+
+  /* ── Settings Page ── */
+  .settings-wrap {
+    width:100%; max-width:780px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .settings-filter { display:flex; gap:8px; margin-bottom:4px; }
+  .filter-btn {
+    padding:5px 14px; border-radius:4px; border:1px solid var(--border);
+    background:transparent; color:var(--muted);
+    font-family:monospace; font-size:0.72rem; cursor:pointer;
+  }
+  .filter-btn.active { background:var(--purple2); color:#fff; border-color:var(--purple2); }
+
+  .model-row {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px;
+    display:grid; grid-template-columns:1fr auto;
+    gap:8px; align-items:center;
+  }
+  .model-row:hover { border-color:var(--border); }
+  .mr-name { font-size:0.82rem; font-weight:bold; }
+  .mr-desc { font-size:0.7rem; color:var(--muted); margin-top:3px; }
+  .mr-meta { font-size:0.68rem; color:var(--purple); margin-top:4px; }
+  .mr-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+
+  /* Progress bar */
+  .progress-wrap { width:160px; display:none; flex-direction:column; gap:4px; }
+  .progress-wrap.visible { display:flex; }
+  .progress-bar { background:var(--border); border-radius:3px; height:4px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--purple2); border-radius:3px; transition:width 0.3s; }
+  .progress-label { font-size:0.62rem; color:var(--muted); }
+
+  /* History */
+  .history-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .history-item {
+    position:relative; border-radius:6px; overflow:hidden;
+    border:1px solid var(--border); cursor:pointer;
+  }
+  .history-item:hover { border-color:var(--purple); }
+  .history-item img { width:100%; aspect-ratio:1; object-fit:cover; image-rendering:pixelated; display:block; }
+  .history-dl {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(0,0,0,0.7); text-align:center;
+    font-size:0.62rem; color:var(--purple); padding:3px;
+    opacity:0; transition:opacity 0.2s;
+  }
+  .history-item:hover .history-dl { opacity:1; }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--panel); border:1px solid var(--border);
+    padding:10px 20px; border-radius:8px; font-size:0.78rem;
+    opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:100;
+  }
+  .toast.show { opacity:1; }
+
+  /* Loader */
+  .loader {
+    width:22px; height:22px; border:2px solid var(--border);
+    border-top-color:var(--purple); border-radius:50%;
+    animation:spin 0.8s linear infinite; display:none;
+  }
+  .loader.visible { display:block; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <h1>◈ TPIXEL ◈</h1>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('workspace')">Workspace</button>
+    <button class="nav-tab"        onclick="showPage('settings')">Settings</button>
+  </div>
+  <div class="header-right">
+    <span id="hdr-platform">--</span>
+    <span>Score: <span id="hdr-score">--</span>/100</span>
+    <span>RAM: <span id="hdr-ram">--</span>MB free</span>
+  </div>
+</header>
+
+<!-- LEFT -->
+<div class="panel" id="left-panel">
+  <div class="panel-title">System</div>
+  <div>
+    <div class="ram-bar"><div class="ram-fill" id="ram-fill" style="width:0%"></div></div>
+    <div class="ram-label" id="ram-detail">Đang tải...</div>
+  </div>
+
+  <div class="panel-title">Active Model</div>
+  <div id="active-model-info" style="font-size:0.72rem; color:var(--muted)">Chưa chọn model</div>
+
+  <div class="panel-title">Downloaded</div>
+  <div id="downloaded-list" style="display:flex; flex-direction:column; gap:6px">
+    <div style="font-size:0.72rem; color:var(--muted)">Chưa có model</div>
+  </div>
+</div>
+
+<!-- CENTER -->
+<div class="workspace" id="center-panel">
+
+  <!-- Workspace Page -->
+  <div class="page active" id="page-workspace" style="width:100%; align-items:center; gap:16px">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('scale',this)">Scale</button>
+      <button class="tab"        onclick="switchTab('generate',this)">Generate</button>
+    </div>
+
+    <!-- Scale -->
+    <div id="tab-scale" style="width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:16px">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="dz-icon">◈</div>
+        <p>Kéo thả ảnh vào đây hoặc click để chọn</p>
+        <p style="font-size:0.65rem">PNG · JPG · GIF · Tối đa 4096px</p>
+        <input type="file" id="file-input" accept="image/*">
+      </div>
+
+      <div class="compare-wrap" id="compare-wrap">
+        <img id="img-after" src="" alt="after">
+        <div class="compare-before" id="compare-before">
+          <img id="img-before" src="" alt="before">
+        </div>
+        <div class="slider-line" id="slider-line"></div>
+        <span class="cmp-label" style="left:8px">Gốc</span>
+        <span class="cmp-label" style="right:8px">TPixel</span>
+      </div>
+
+      <div class="actions">
+        <select id="factor-select">
+          <option value="2">2x Upscale</option>
+          <option value="4">4x Upscale</option>
+        </select>
+        <button class="btn btn-primary" id="btn-scale" onclick="doScale()" disabled>Upscale</button>
+        <div class="loader" id="loader-scale"></div>
+      </div>
+    </div>
+
+    <!-- Generate -->
+    <div id="tab-generate" style="display:none; width:100%; max-width:500px; flex-direction:column; align-items:center; gap:16px">
+      <textarea id="prompt-input" rows="3" placeholder="Mô tả pixel art... ví dụ: knight with sword, dragon, potion bottle"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="doGenerate()">Generate</button>
+        <div class="loader" id="loader-gen"></div>
+      </div>
+      <div class="gen-result" id="gen-result">
+        <img id="gen-img" src="" alt="result">
+        <button class="btn btn-ghost btn-sm" onclick="downloadGen()">↓ Tải về</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Page -->
+  <div class="page" id="page-settings" style="width:100%; align-items:center; padding:8px 0; gap:12px">
+    <div class="settings-wrap">
+      <div style="font-size:0.72rem; color:var(--muted)">
+        Chọn model để tải về. Sau khi tải xong, chọn model ở sidebar trái để dùng.
+      </div>
+      <div class="settings-filter">
+        <button class="filter-btn active" onclick="filterModels('all',this)">Tất cả</button>
+        <button class="filter-btn" onclick="filterModels('scale',this)">Scale</button>
+        <button class="filter-btn" onclick="filterModels('generate',this)">Generate</button>
+        <button class="filter-btn" onclick="filterModels('motion',this)">Motion</button>
+      </div>
+      <div id="settings-model-list" style="display:flex; flex-direction:column; gap:8px"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="panel">
+  <div class="panel-title">History</div>
+  <div class="history-grid" id="history-grid">
+    <div style="font-size:0.72rem; color:var(--muted); grid-column:1/-1">Chưa có ảnh</div>
+  </div>
+  <button class="btn btn-ghost btn-sm" id="btn-dl-all"
+          style="display:none; margin-top:auto" onclick="downloadAll()">
+    ↓ Tải tất cả
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let selectedFile  = null;
+let historyItems  = [];
+let allModels     = [];
+let currentFilter = 'all';
+let sliderDrag    = false;
+let pollTimers    = {};  // model_id → intervalId
+
+// ── Pages ──────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'settings') loadSettingsModels();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-scale').style.display    = name === 'scale'    ? 'flex' : 'none';
+  document.getElementById('tab-generate').style.display = name === 'generate' ? 'flex' : 'none';
+}
+
+// ── Status ─────────────────────────────────────────────────────
+async function loadStatus() {
+  const d = await fetch('/api/status').then(r => r.json());
+  document.getElementById('hdr-platform').textContent = d.platform;
+  document.getElementById('hdr-score').textContent    = d.tpixel_score;
+  document.getElementById('hdr-ram').textContent      = d.ram_free_mb;
+  const used = d.ram_total_mb - d.ram_free_mb;
+  const pct  = Math.round(used / d.ram_total_mb * 100);
+  document.getElementById('ram-fill').style.width   = pct + '%';
+  document.getElementById('ram-detail').textContent =
+    `${used}MB / ${d.ram_total_mb}MB (${pct}%)`;
+  if (d.active_model) {
+    document.getElementById('active-model-info').textContent = d.active_model;
+  }
+}
+
+// ── Sidebar: Downloaded models ─────────────────────────────────
+async function loadDownloadedSidebar() {
+  const models = await fetch('/api/models').then(r => r.json());
+  allModels = models;
+  const dl = models.filter(m => m.downloaded);
+  const list = document.getElementById('downloaded-list');
+  if (dl.length === 0) {
+    list.innerHTML = '<div style="font-size:0.72rem;color:var(--muted)">Chưa có model — vào Settings để tải</div>';
+    return;
+  }
+  list.innerHTML = '';
+  dl.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'model-card';
+    div.dataset.id = m.id;
+    div.innerHTML = `
+      <div class="mc-name">${m.name}</div>
+      <div class="mc-meta">${m.task} · ${m.size_mb}MB</div>
+    `;
+    div.onclick = () => selectActiveModel(m.id, div);
+    list.appendChild(div);
+  });
+}
+
+async function selectActiveModel(id, el) {
+  await fetch('/api/models/select', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ model_id: id })
+  });
+  document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active-model'));
+  el.classList.add('active-model');
+  document.getElementById('active-model-info').textContent = id;
+  toast(`Model: ${id}`);
+}
+
+// ── Settings: Model list ───────────────────────────────────────
+async function loadSettingsModels() {
+  const models = await fetch('/api/models').then(r => r.json());
+  allModels = models;
+  renderSettingsModels();
+}
+
+function filterModels(task, el) {
+  currentFilter = task;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderSettingsModels();
+}
+
+function renderSettingsModels() {
+  const filtered = currentFilter === 'all'
+    ? allModels
+    : allModels.filter(m => m.task === currentFilter);
+
+  const container = document.getElementById('settings-model-list');
+  container.innerHTML = '';
+
+  filtered.forEach(m => {
+    const isDl   = m.downloaded;
+    const prog   = m.progress;
+    const isActive = prog && prog.status === 'downloading';
+
+    const row = document.createElement('div');
+    row.className = 'model-row';
+    row.id = `row-${m.id}`;
+    row.innerHTML = `
+      <div>
+        <div class="mr-name">
+          ${m.name}
+          <span class="badge ${isDl ? 'badge-dl' : 'badge-nodl'}">
+            ${isDl ? '✓ Đã tải' : '✗ Chưa tải'}
+          </span>
+        </div>
+        <div class="mr-desc">${m.description}</div>
+        <div class="mr-meta">${m.task} · ${m.size_mb}MB · ${m.format.toUpperCase()}</div>
+      </div>
+      <div class="mr-actions">
+        <div class="progress-wrap ${isActive ? 'visible' : ''}" id="prog-${m.id}">
+          <div class="progress-bar">
+            <div class="progress-fill" id="prog-fill-${m.id}" style="width:0%"></div>
+          </div>
+          <div class="progress-label" id="prog-label-${m.id}">0%</div>
+        </div>
+        ${isDl
+          ? `<button class="btn btn-danger btn-sm" onclick="doDelete('${m.id}')">Xóa</button>`
+          : `<button class="btn btn-primary btn-sm" id="btn-dl-${m.id}"
+               onclick="doDownload('${m.id}')">↓ Tải về</button>`
+        }
+      </div>
+    `;
+    container.appendChild(row);
+
+    // Nếu đang tải dở → resume poll
+    if (isActive) startPoll(m.id);
+  });
+}
+
+// ── Download ───────────────────────────────────────────────────
+async function doDownload(id) {
+  const btn = document.getElementById(`btn-dl-${id}`);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  const resp = await fetch(`/api/models/${id}/download`, { method:'POST' });
+  const data = await resp.json();
+
+  if (!resp.ok) { toast('Lỗi: ' + data.detail, true); return; }
+
+  toast(`Bắt đầu tải ${id}`);
+  showProgress(id);
+  startPoll(id);
+}
+
+function showProgress(id) {
+  const wrap = document.getElementById(`prog-${id}`);
+  if (wrap) wrap.classList.add('visible');
+}
+
+function startPoll(id) {
+  if (pollTimers[id]) return;
+  pollTimers[id] = setInterval(() => pollProgress(id), 1000);
+}
+
+async function pollProgress(id) {
+  const resp = await fetch(`/api/models/${id}/progress`).then(r => r.json());
+
+  const fill  = document.getElementById(`prog-fill-${id}`);
+  const label = document.getElementById(`prog-label-${id}`);
+
+  if (fill)  fill.style.width   = resp.percent + '%';
+  if (label) label.textContent  =
+    resp.status === 'downloading'
+      ? `${resp.percent}% — ${fmt(resp.size_done)} / ${fmt(resp.size_total)}`
+      : resp.message;
+
+  if (resp.status === 'done' || resp.status === 'error') {
+    clearInterval(pollTimers[id]);
+    delete pollTimers[id];
+
+    if (resp.status === 'done') {
+      toast(`✓ Tải xong: ${id}`);
+      await loadSettingsModels();
+      await loadDownloadedSidebar();
+    } else {
+      toast(`✗ Lỗi: ${resp.message}`, true);
+    }
+  }
+}
+
+async function doDelete(id) {
+  if (!confirm(`Xóa model ${id}?`)) return;
+  const resp = await fetch(`/api/models/${id}`, { method:'DELETE' });
+  const data = await resp.json();
+  toast(data.message || data.detail);
+  await loadSettingsModels();
+  await loadDownloadedSidebar();
+}
+
+function fmt(bytes) {
+  if (!bytes) return '?';
+  if (bytes > 1048576) return (bytes/1048576).toFixed(1) + 'MB';
+  return (bytes/1024).toFixed(0) + 'KB';
+}
+
+// ── Drop Zone ──────────────────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(file) {
+  selectedFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('img-before').src = url;
+  document.getElementById('img-after').src  = url;
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('compare-wrap').classList.add('visible');
+  document.getElementById('compare-before').style.width = '50%';
+  document.getElementById('slider-line').style.left = '50%';
+  document.getElementById('btn-scale').disabled = false;
+  toast(file.name + ' đã chọn');
+}
+
+// ── Slider ─────────────────────────────────────────────────────
+const sliderLine   = document.getElementById('slider-line');
+const compareWrap  = document.getElementById('compare-wrap');
+const compareBefore= document.getElementById('compare-before');
+
+sliderLine.addEventListener('mousedown',  () => sliderDrag = true);
+sliderLine.addEventListener('touchstart', () => sliderDrag = true);
+window.addEventListener('mouseup',   () => sliderDrag = false);
+window.addEventListener('touchend',  () => sliderDrag = false);
+window.addEventListener('mousemove', e => moveSlider(e.clientX));
+window.addEventListener('touchmove', e => moveSlider(e.touches[0].clientX));
+
+function moveSlider(x) {
+  if (!sliderDrag) return;
+  const rect = compareWrap.getBoundingClientRect();
+  const pct  = Math.min(100, Math.max(0, (x - rect.left) / rect.width * 100));
+  compareBefore.style.width      = pct + '%';
+  sliderLine.style.left          = pct + '%';
+}
+
+// ── Scale ──────────────────────────────────────────────────────
+async function doScale() {
+  if (!selectedFile) return;
+  const btn    = document.getElementById('btn-scale');
+  const loader = document.getElementById('loader-scale');
+  const factor = document.getElementById('factor-select').value;
+  btn.disabled = true; loader.classList.add('visible');
+
+  const form = new FormData();
+  form.append('file', selectedFile);
+  const resp = await fetch(`/api/scale?factor=${factor}`, { method:'POST', body:form });
+
+  btn.disabled = false; loader.classList.remove('visible');
+  if (!resp.ok) { toast('Lỗi: ' + (await resp.json()).detail, true); return; }
+
+  const url = URL.createObjectURL(await resp.blob());
+  document.getElementById('img-after').src = url;
+  addHistory(url, factor + 'x');
+  toast(`Upscale ${factor}x hoàn tất ✓`);
+}
+
+// ── Generate ───────────────────────────────────────────────────
+async function doGenerate() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) { toast('Nhập prompt trước', true); return; }
+  const loader = document.getElementById('loader-gen');
+  loader.classList.add('visible');
+
+  const resp = await fetch('/api/generate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ prompt })
+  });
+  loader.classList.remove('visible');
+  if (!resp.ok) { toast('Lỗi: ' + (await resp.json()).detail, true); return; }
+
+  const url = URL.createObjectURL(await resp.blob());
+  document.getElementById('gen-img').src = url;
+  document.getElementById('gen-result').style.display = 'flex';
+  addHistory(url, 'gen');
+  toast('Generate xong ✓');
+}
+
+function downloadGen() {
+  const src = document.getElementById('gen-img').src;
+  if (!src) return;
+  const a = document.createElement('a');
+  a.href = src; a.download = `tpixel_gen_${Date.now()}.png`; a.click();
+}
+
+// ── History ────────────────────────────────────────────────────
+function addHistory(url, label) {
+  historyItems.push({ url, label });
+  const grid = document.getElementById('history-grid');
+  if (historyItems.length === 1) grid.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'history-item';
+  item.innerHTML = `
+    <img src="${url}">
+    <div class="history-dl" onclick="dlImg('${url}','${label}')">↓ Tải về</div>
+  `;
+  grid.prepend(item);
+  document.getElementById('btn-dl-all').style.display = 'block';
+}
+
+function dlImg(url, label) {
+  const a = document.createElement('a');
+  a.href = url; a.download = `tpixel_${label}_${Date.now()}.png`; a.click();
+}
+
+function downloadAll() {
+  historyItems.forEach((h, i) => setTimeout(() => dlImg(h.url, h.label), i * 300));
+  toast(`Đang tải ${historyItems.length} ảnh...`);
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent   = msg;
+  t.style.borderColor = isError ? 'var(--red)' : 'var(--purple)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Init ───────────────────────────────────────────────────────
+loadStatus();
+loadDownloadedSidebar();
+setInterval(loadStatus, 10000);
+</script>
+</body>
+</html>

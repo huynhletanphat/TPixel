@@ -1,64 +1,155 @@
 {
+  "version": "1.0",
   "models": [
     {
-      "id": "realesrgan-x2plus",
-      "name": "Real-ESRGAN x2",
+      "id": "realesrgan-x2-general",
+      "name": "Real-ESRGAN x2 General",
       "task": "scale",
       "scale": 2,
       "size_mb": 6,
-      "source": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth",
-      "format": "onnx",
-      "platforms": ["termux", "linux", "windows"],
-      "min_ram_mb": 512,
-      "recommended_ram_mb": 1024
+      "description": "Upscale ảnh thật, phong cảnh, nhân vật. Nhẹ nhất, nhanh nhất.",
+      "download_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth",
+      "format": "onnx"
     },
     {
-      "id": "realesrgan-x4plus",
-      "name": "Real-ESRGAN x4",
+      "id": "realesrgan-x4-general",
+      "name": "Real-ESRGAN x4 General",
       "task": "scale",
       "scale": 4,
       "size_mb": 67,
-      "source": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
-      "format": "onnx",
-      "platforms": ["termux", "linux", "windows"],
-      "min_ram_mb": 1024,
-      "recommended_ram_mb": 2048
+      "description": "Upscale 4x ảnh thật. Cân bằng tốc độ và chất lượng.",
+      "download_url": "https://github.com/facefusion/facefusion-assets/releases/download/models-3.0.0/real_esrgan_x4.onnx",
+      "format": "onnx"
     },
     {
-      "id": "waifu2x-cunet",
-      "name": "Waifu2x CUNet",
+      "id": "realesrgan-x4-anime",
+      "name": "Real-ESRGAN x4 Anime",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 67,
+      "description": "Tối ưu cho ảnh anime, pixel art, illustration. Giữ đường nét sắc nét.",
+      "download_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "realesrgan-x4-animevideo",
+      "name": "Real-ESRGAN x4 Anime Video",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 18,
+      "description": "Nhẹ hơn, tối ưu cho từng frame video anime. Tốt cho sprite sheet.",
+      "download_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "waifu2x-cunet-noise0",
+      "name": "Waifu2x CUNet Noise0",
       "task": "scale",
       "scale": 2,
       "size_mb": 18,
-      "source": "https://github.com/nihui/waifu2x-ncnn-vulkan/releases",
-      "format": "onnx",
-      "platforms": ["termux", "linux", "windows"],
-      "min_ram_mb": 512,
-      "recommended_ram_mb": 1024
+      "description": "Classic upscale anime/pixel art. Không khử nhiễu — giữ nguyên texture.",
+      "download_url": "https://github.com/nihui/waifu2x-ncnn-vulkan/releases/download/20220728/waifu2x-ncnn-vulkan-20220728-ubuntu.zip",
+      "format": "onnx"
     },
     {
-      "id": "sdxl-turbo-int8",
-      "name": "SDXL Turbo INT8",
-      "task": "generate",
-      "scale": null,
-      "size_mb": 800,
-      "source": "https://huggingface.co/stabilityai/sdxl-turbo",
-      "format": "onnx",
-      "platforms": ["linux", "windows"],
-      "min_ram_mb": 3072,
-      "recommended_ram_mb": 6144
+      "id": "waifu2x-cunet-noise3",
+      "name": "Waifu2x CUNet Noise3",
+      "task": "scale",
+      "scale": 2,
+      "size_mb": 18,
+      "description": "Upscale anime/pixel art + khử nhiễu mạnh. Tốt cho ảnh scan cũ.",
+      "download_url": "https://github.com/nihui/waifu2x-ncnn-vulkan/releases/download/20220728/waifu2x-ncnn-vulkan-20220728-ubuntu.zip",
+      "format": "onnx"
     },
     {
-      "id": "stable-diffusion-1.5",
-      "name": "Stable Diffusion 1.5",
+      "id": "esrgan-4x-universal",
+      "name": "ESRGAN x4 Universal",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 63,
+      "description": "Model ESRGAN gốc, universal. Chất lượng cao, nặng hơn Real-ESRGAN.",
+      "download_url": "https://github.com/cszn/KAIR/releases/download/v1.0/ESRGAN.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "swinir-4x-real",
+      "name": "SwinIR x4 Real-World",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 136,
+      "description": "Transformer-based upscale. Tốt nhất cho ảnh thật, chi tiết cao.",
+      "download_url": "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "swinir-4x-lightweight",
+      "name": "SwinIR x4 Lightweight",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 28,
+      "description": "Phiên bản nhẹ của SwinIR. Cân bằng tốc độ/chất lượng tốt.",
+      "download_url": "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "hat-4x",
+      "name": "HAT x4 (Hybrid Attention)",
+      "task": "scale",
+      "scale": 4,
+      "size_mb": 159,
+      "description": "State-of-the-art 2023. Chất lượng tốt nhất hiện tại cho upscale ảnh thật.",
+      "download_url": "https://github.com/XPixelGroup/HAT/releases/download/v1.0.0/HAT_SRx4_ImageNet-pretrain.pth",
+      "format": "onnx"
+    },
+    {
+      "id": "sd-1.5-onnx",
+      "name": "Stable Diffusion 1.5 ONNX",
       "task": "generate",
       "scale": null,
       "size_mb": 4096,
-      "source": "https://huggingface.co/runwayml/stable-diffusion-v1-5",
-      "format": "onnx",
-      "platforms": ["linux", "windows"],
-      "min_ram_mb": 6144,
-      "recommended_ram_mb": 8192
+      "description": "Model generate kinh điển. Cộng đồng lớn, nhiều LoRA pixel art.",
+      "download_url": "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt",
+      "format": "onnx"
+    },
+    {
+      "id": "sd-turbo-onnx",
+      "name": "SD-Turbo ONNX",
+      "task": "generate",
+      "scale": null,
+      "size_mb": 1600,
+      "description": "Generate nhanh gấp 10x SD 1.5. Ít bước hơn, chất lượng vẫn tốt.",
+      "download_url": "https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors",
+      "format": "onnx"
+    },
+    {
+      "id": "sdxl-turbo-int8",
+      "name": "SDXL Turbo INT8 Quantized",
+      "task": "generate",
+      "scale": null,
+      "size_mb": 800,
+      "description": "SDXL Turbo đã quantize INT8. Nhẹ hơn 4x, chất lượng SDXL.",
+      "download_url": "https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors",
+      "format": "onnx"
+    },
+    {
+      "id": "waifu-diffusion-1.4",
+      "name": "Waifu Diffusion 1.4",
+      "task": "generate",
+      "scale": null,
+      "size_mb": 4096,
+      "description": "Fine-tune SD cho anime/pixel art. Tốt nhất cho sprite pixel art.",
+      "download_url": "https://huggingface.co/hakurei/waifu-diffusion-v1-4/resolve/main/wd-1-4-anime_e2.ckpt",
+      "format": "onnx"
+    },
+    {
+      "id": "anything-v5",
+      "name": "Anything V5",
+      "task": "generate",
+      "scale": null,
+      "size_mb": 4096,
+      "description": "Fine-tune SD anime cực phổ biến. Dễ dùng, kết quả đẹp.",
+      "download_url": "https://huggingface.co/stablediffusionapi/anything-v5/resolve/main/AnythingV5Ink_ink.safetensors",
+      "format": "onnx"
     },
     {
       "id": "film-interpolation",
@@ -66,11 +157,29 @@
       "task": "motion",
       "scale": null,
       "size_mb": 148,
-      "source": "https://github.com/google-research/frame-interpolation",
-      "format": "onnx",
-      "platforms": ["linux", "windows"],
-      "min_ram_mb": 2048,
-      "recommended_ram_mb": 4096
+      "description": "Google FILM — tạo khung hình trung gian mượt mà giữa 2 frame.",
+      "download_url": "https://github.com/google-research/frame-interpolation",
+      "format": "onnx"
+    },
+    {
+      "id": "rife-4.6",
+      "name": "RIFE 4.6 Interpolation",
+      "task": "motion",
+      "scale": null,
+      "size_mb": 110,
+      "description": "Real-Time Intermediate Flow Estimation. Nhanh hơn FILM, tốt cho animation.",
+      "download_url": "https://github.com/hzwer/Practical-RIFE/releases/download/v4.6/train_log.zip",
+      "format": "onnx"
+    },
+    {
+      "id": "ebsynth",
+      "name": "EbSynth Style Transfer",
+      "task": "motion",
+      "scale": null,
+      "size_mb": 89,
+      "description": "Chuyển style pixel art từ 1 keyframe sang toàn bộ animation.",
+      "download_url": "https://ebsynth.com/",
+      "format": "onnx"
     }
   ]
 }
