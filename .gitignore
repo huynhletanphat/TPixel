@@ -1,0 +1,27 @@
+# Models — quá nặng, user tự tải
+models/downloaded/
+
+# Runtime data
+data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+tpixel-env/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
