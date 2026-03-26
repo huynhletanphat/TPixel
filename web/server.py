@@ -8,6 +8,7 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, Response
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="TPixel", version="0.2.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 
 # ── UI ────────────────────────────────────────────────────────────
@@ -133,14 +135,16 @@ async def select_model(body: SelectModel):
 
 # ── Scale ─────────────────────────────────────────────────────────
 @app.post("/api/scale")
-async def scale_image(file: UploadFile = File(...), factor: int = 2):
+async def scale_image(file: UploadFile = File(...), factor: int = 2, method: str = "nearest"):
     if factor not in (2, 4):
         raise HTTPException(status_code=400, detail="Factor chỉ hỗ trợ 2 hoặc 4")
+    if method not in ("nearest", "sharp", "ai"):
+        raise HTTPException(status_code=400, detail="Method: nearest | sharp | ai")
     data = await file.read()
-    ok, result, msg = scale(data, factor)
+    ok, result, msg = scale(data, factor, method)
     if not ok:
         raise HTTPException(status_code=422, detail=msg)
-    return Response(content=result, media_type="image/png")
+    return Response(content=result, media_type="image/png", headers={"X-Scale-Info": msg.encode("ascii", errors="replace").decode("ascii")})
 
 
 # ── Generate ──────────────────────────────────────────────────────
@@ -155,3 +159,33 @@ async def generate_image(body: GenRequest):
     if not ok:
         raise HTTPException(status_code=500, detail=msg)
     return Response(content=result, media_type="image/png")
+
+
+@app.get("/api/system")
+async def system_stats():
+    import psutil, shutil
+    cpu  = psutil.cpu_percent(interval=None) or psutil.cpu_percent(interval=0.5)
+    mem  = psutil.virtual_memory()
+    disk = shutil.disk_usage("/")
+    return {
+        "cpu_percent"  : cpu,
+        "ram_percent"  : mem.percent,
+        "ram_used_mb"  : mem.used     // (1024**2),
+        "ram_total_mb" : mem.total    // (1024**2),
+        "ram_free_mb"  : mem.available // (1024**2),
+        "disk_used_gb" : round(disk.used  / (1024**3), 1),
+        "disk_total_gb": round(disk.total / (1024**3), 1),
+        "disk_percent" : round(disk.used  / disk.total * 100, 1),
+    }
+
+
+@app.get("/api/benchmark")
+async def benchmark_detail():
+    state = get_state()
+    return {
+        "cpu_score"   : state.benchmark.cpu_score,
+        "cpu_count"   : state.benchmark.cpu_count,
+        "gpu"         : state.benchmark.gpu_available,
+        "architecture": state.benchmark.platform_info.architecture,
+        "score_detail": state.benchmark.score_detail,
+    }

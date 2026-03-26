@@ -1,6 +1,6 @@
 """
 core/ai_engine.py
-Điều phối trung tâm — gọi runner.py để inference ONNX thật.
+Điều phối trung tâm.
 Import bởi: server.py
 """
 
@@ -10,14 +10,16 @@ from PIL import Image
 from dataclasses import dataclass
 from core.platform_detector import detect, PlatformInfo
 from core.benchmarker import run as run_benchmark, BenchmarkResult
-from core.processors import load_image, to_bytes
+from core.processors import load_image, to_bytes, upscale_nearest, upscale_sharp
 from core.runner import run_scale
 from core.model_manager import is_downloaded, get_by_id
 
-MODE_LOCAL = "local"
-MODE_API   = "api"
-
 DOWNLOAD_DIR = "models/downloaded"
+
+# method constants
+METHOD_NEAREST = "nearest"   # Pixel art — giữ cạnh vuông
+METHOD_SHARP   = "sharp"     # Nearest + sharpen
+METHOD_AI      = "ai"        # ONNX model
 
 
 @dataclass
@@ -35,11 +37,9 @@ def init(registry_path: str = "models/registry.json") -> EngineState:
     global _state
     platform  = detect()
     benchmark = run_benchmark(registry_path)
-    mode = MODE_API if (platform.is_mobile or benchmark.tpixel_score < 30) else MODE_LOCAL
-    _state = EngineState(
-        platform=platform, benchmark=benchmark,
-        mode=mode, active_model=None
-    )
+    mode      = "api" if (platform.is_mobile or benchmark.tpixel_score < 30) else "local"
+    _state    = EngineState(platform=platform, benchmark=benchmark,
+                            mode=mode, active_model=None)
     return _state
 
 
@@ -51,77 +51,67 @@ def get_state() -> EngineState:
 
 def set_model(model_id: str) -> tuple[bool, str]:
     state = get_state()
-    ids = [m.id for m in state.benchmark.suggestions]
+    ids   = [m.id for m in state.benchmark.suggestions]
     if model_id not in ids:
         return False, f"Model '{model_id}' không có trong registry"
     state.active_model = model_id
-    return True, f"Đã chọn model: {model_id}"
+    return True, f"Đã chọn: {model_id}"
 
 
-def _get_model_path(model_id: str | None, task: str) -> tuple[bool, str, str]:
-    """
-    Tìm model path theo thứ tự:
-    1. active_model nếu có và đúng task
-    2. Model đầu tiên đã tải phù hợp task
-    3. Không có → báo lỗi rõ ràng
-    """
+def _find_model(task: str) -> tuple[bool, str, str]:
     state = get_state()
-
-    # Thử active model trước
-    if model_id and is_downloaded(model_id):
-        m = get_by_id(model_id)
+    if state.active_model and is_downloaded(state.active_model):
+        m = get_by_id(state.active_model)
         if m and m["task"] == task:
-            return True, os.path.join(DOWNLOAD_DIR, f"{model_id}.onnx"), model_id
-
-    # Tìm model đầu tiên đã tải đúng task
+            return True, os.path.join(DOWNLOAD_DIR, f"{state.active_model}.onnx"), state.active_model
     for m in state.benchmark.suggestions:
         if m.task == task and is_downloaded(m.id):
-            path = os.path.join(DOWNLOAD_DIR, f"{m.id}.onnx")
-            return True, path, m.id
-
-    return False, "", f"Chưa có model '{task}' nào được tải — vào Settings để tải"
+            return True, os.path.join(DOWNLOAD_DIR, f"{m.id}.onnx"), m.id
+    return False, "", f"Chưa có model '{task}' — vào Settings tải về"
 
 
-def scale(image_bytes: bytes, factor: int = 2) -> tuple[bool, bytes, str]:
+def scale(image_bytes: bytes, factor: int = 2,
+          method: str = METHOD_NEAREST) -> tuple[bool, bytes, str]:
     ok, img, msg = load_image(image_bytes)
     if not ok:
         return False, b"", msg
 
-    state = get_state()
-    found, path, model_id = _get_model_path(state.active_model, "scale")
+    # Nearest hoặc Sharp — không cần model
+    if method == METHOD_NEAREST:
+        r = upscale_nearest(img, factor)
+        if not r.success:
+            return False, b"", r.message
+        return True, to_bytes(r.image), f"nearest {r.input_size}→{r.output_size}"
 
+    if method == METHOD_SHARP:
+        r = upscale_sharp(img, factor)
+        if not r.success:
+            return False, b"", r.message
+        return True, to_bytes(r.image), f"sharp {r.input_size}→{r.output_size}"
+
+    # AI — cần model ONNX
+    found, path, model_id = _find_model("scale")
     if not found:
-        return False, b"", path  # path chứa error message
-
+        return False, b"", path
     result = run_scale(path, img)
     if not result.success:
         return False, b"", result.message
-
-    return True, to_bytes(result.image), model_id
+    w, h = img.size
+    ow, oh = result.image.size
+    return True, to_bytes(result.image), f"{model_id} {w}x{h}→{ow}x{oh}"
 
 
 def generate(prompt: str) -> tuple[bool, bytes, str]:
-    """Generate chưa có model ONNX thật — trả về thông báo rõ ràng."""
-    state = get_state()
-    found, path, model_id = _get_model_path(state.active_model, "generate")
-    if not found:
-        return False, b"", "Chưa có model generate — vào Settings tải SD hoặc SDXL"
-    # TODO: inference generate sau khi có runner_generate.py
-    return False, b"", "Generate ONNX đang phát triển — coming soon"
+    return False, b"", "Generate đang phát triển — coming soon"
 
 
 if __name__ == "__main__":
     state = init()
-    print(f"Mode         : {state.mode}")
-    print(f"TPixel Score : {state.benchmark.tpixel_score}/100")
-    print(f"Platform     : {state.platform.platform}")
+    print(f"Platform: {state.platform.platform} | Score: {state.benchmark.tpixel_score}/100")
 
-    test_img = Image.new("RGB", (64, 64), color=(106, 90, 205))
-    buf = io.BytesIO()
-    test_img.save(buf, format="PNG")
+    img = Image.new("RGB", (32, 32), (106, 90, 205))
+    buf = io.BytesIO(); img.save(buf, format="PNG")
 
-    ok, result_bytes, msg = scale(buf.getvalue(), factor=4)
-    print(f"Scale test   : {'OK' if ok else 'FAIL'} — {msg}")
-    if ok:
-        out = Image.open(io.BytesIO(result_bytes))
-        print(f"Output size  : {out.size}")
+    for method in ["nearest", "sharp", "ai"]:
+        ok, _, msg = scale(buf.getvalue(), factor=4, method=method)
+        print(f"  {method:<8}: {'OK' if ok else 'FAIL'} — {msg}")
